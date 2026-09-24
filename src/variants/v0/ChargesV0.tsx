@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { ArrowUpRight, Check, Gavel, ReceiptText, Sparkles, Truck, Undo2, Wrench } from 'lucide-react'
+import { ArrowUpRight, Check, ReceiptText, Truck, Undo2, Wrench } from 'lucide-react'
+import { ChargeIcon } from '@/features/rent/shared/ChargeIcon'
 import { SegmentedControl } from '@/components/ui/segmented-control'
 import { cn } from '@/lib/utils'
 import { formatAmount, formatMoney } from '@/lib/money'
@@ -212,16 +213,4 @@ export function ChargesV0() {
       <CancelChargeDialog charge={cancelling} onClose={() => setCancelling(null)} />
     </div>
   )
-}
-
-export function ChargeIcon({ article, className = 'size-4 text-muted-fg' }: { article: string; className?: string }) {
-  const a = article.toLowerCase()
-  const Icon = a.includes('достав')
-    ? Truck
-    : a.includes('мийк') || a.includes('митт') || a.includes('хімі')
-      ? Sparkles
-      : a.includes('штраф') || a.includes('пошкод')
-        ? Gavel
-        : ReceiptText
-  return <Icon className={className} aria-hidden />
 }

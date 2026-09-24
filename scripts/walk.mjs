@@ -123,8 +123,12 @@ class Run {
   }
   async type(sel, value) {
     const el = await page.waitForSelector(sel, { visible: true, timeout: 5000 })
-    await el.click({ clickCount: 3 })
+    await el.click()
     this.clicks++
+    // Сума з нерозривним пробілом: виділяємо все клавіатурою, як менеджер.
+    await page.keyboard.down('Control')
+    await page.keyboard.press('KeyA')
+    await page.keyboard.up('Control')
     await el.type(String(value))
     await page.keyboard.press('Enter')
     await this.snap()
@@ -236,6 +240,189 @@ const DRIVERS = {
       await run.click('[data-testid="to-handover"]')
     },
   },
+
+  /* A: спосіб явно в рядку, каса — чип, «Покриває» — поповер з галочками. */
+  A: {
+    async payAll(run, method = 'cash', { cashbox } = {}) {
+      await run.click(`[data-testid="method-${method}"]`)
+      if (cashbox) {
+        await run.click('[data-testid="cashbox-chip"]')
+        await run.click(`[data-testid="cashbox-option-${cashbox}"]`)
+      }
+      await run.click('[data-testid="accept"]')
+      await sleep(250)
+    },
+    async payGroup(run, group, method) {
+      await run.click(`[data-testid="method-${method}"]`)
+      const other = group === 'rent' ? 'deposit' : 'rent'
+      const words = await page.$eval('[data-testid="cover-trigger"]', (b) => b.textContent).catch(() => '')
+      if ((other === 'deposit' && /застава/.test(words)) || (other === 'rent' && /оренда/.test(words))) {
+        await run.click('[data-testid="cover-trigger"]')
+        await run.click(`[data-testid="cover-${other}"]`)
+      }
+      await run.click('[data-testid="accept"]')
+      await sleep(250)
+    },
+    async payAmount(run, amount, method) {
+      await run.click(`[data-testid="method-${method}"]`)
+      await run.type('[data-testid="amount"]', amount)
+      await run.click('[data-testid="accept"]')
+      await sleep(250)
+    },
+    async bank(run) {
+      await run.click('[data-testid="method-bank"]')
+      await run.click('[data-testid="copy-all"]')
+      await run.click('[data-testid="accept"]')
+      await sleep(250)
+    },
+    async confirmPending(run) {
+      await run.click('[data-testid="accept"]')
+      await sleep(250)
+    },
+    async handover(run) {
+      await run.click('[data-testid="to-handover"]')
+    },
+  },
+
+  /* B: список з галочками — склад платежу; рядок прийому під ним. */
+  B: {
+    async method(run, m) {
+      const on = await page.$eval(`[data-testid="method-${m}"]`, (b) => b.getAttribute('aria-checked') === 'true').catch(() => false)
+      if (!on) await run.click(`[data-testid="method-${m}"]`)
+    },
+    async payAll(run, method = 'cash', { cashbox } = {}) {
+      await this.method(run, method)
+      if (cashbox) {
+        await run.click('[data-testid="cashbox-chip"]')
+        await run.click(`[data-testid="cashbox-option-${cashbox}"]`)
+      }
+      await run.click('[data-testid="accept"]')
+      await sleep(250)
+    },
+    async payGroup(run, group, method) {
+      const other = group === 'rent' ? 'deposit' : 'rent'
+      const checked = await page.$eval(`[data-testid="pick-${other}"]`, (b) => b.getAttribute('data-state') === 'checked').catch(() => false)
+      if (checked) await run.click(`[data-testid="pick-${other}"]`)
+      await this.method(run, method)
+      await run.click('[data-testid="accept"]')
+      await sleep(250)
+    },
+    async payAmount(run, amount, method) {
+      await this.method(run, method)
+      await run.type('[data-testid="amount"]', amount)
+      await run.click('[data-testid="accept"]')
+      await sleep(250)
+    },
+    async bank(run) {
+      await this.method(run, 'bank')
+      await run.click('[data-testid="copy-all"]')
+      await run.click('[data-testid="accept"]')
+      await sleep(250)
+    },
+    async confirmPending(run) {
+      await run.click('[data-testid^="confirm-draft"]')
+      await sleep(250)
+    },
+    async handover(run) {
+      await run.click('[data-testid="to-handover"]')
+    },
+  },
+
+  /* C: панель каси з табами і пресетами, дія внизу панелі. */
+  C: {
+    async method(run, m) {
+      const on = await page.$eval(`[data-testid="method-${m}"]`, (b) => b.getAttribute('aria-checked') === 'true').catch(() => false)
+      if (!on) await run.click(`[data-testid="method-${m}"]`)
+    },
+    async payAll(run, method = 'cash', { cashbox } = {}) {
+      await this.method(run, method)
+      if (cashbox) {
+        await run.click('[data-testid="cashbox-chip"]')
+        await run.click(`[data-testid="cashbox-option-${cashbox}"]`)
+      }
+      await run.click('[data-testid="accept"]')
+      await sleep(250)
+    },
+    async payGroup(run, group, method) {
+      const n = await page.evaluate(() => document.querySelectorAll('[data-testid^="preset-"]').length)
+      if (n > 2) await run.click(`[data-testid="preset-${group}"]`)
+      await this.method(run, method)
+      await run.click('[data-testid="accept"]')
+      await sleep(250)
+    },
+    async payAmount(run, amount, method) {
+      await this.method(run, method)
+      await run.type('[data-testid="amount"]', amount)
+      await run.click('[data-testid="accept"]')
+      await sleep(250)
+    },
+    async bank(run) {
+      await this.method(run, 'bank')
+      await run.click('[data-testid="copy-all"]')
+      await run.click('[data-testid="accept"]')
+      await sleep(250)
+    },
+    async confirmPending(run) {
+      await run.click('[data-testid="accept"]')
+      await sleep(250)
+    },
+    async handover(run) {
+      await run.click('[data-testid="to-handover"]')
+    },
+  },
+
+  /* D: речення + ряд дій; «Розділити» для кількох платежів; переказ — бокова панель. */
+  D: {
+    async payAll(run, method = 'cash', { cashbox } = {}) {
+      if (cashbox) {
+        await run.click('[data-testid="cashbox-chip"]')
+        await run.click(`[data-testid="cashbox-option-${cashbox}"]`)
+      }
+      if (method === 'bank') {
+        await run.click('[data-testid="quick-bank"]')
+        await run.click('[data-testid="bank-confirm"]')
+      } else await run.click(`[data-testid="quick-${method}"]`)
+      await sleep(250)
+    },
+    async split(run, plan) {
+      await run.click('[data-testid="quick-split"]')
+      for (const [group, method] of plan) {
+        const on = await page.$eval(`[data-testid="split-${group}-${method}"]`, (b) => b.getAttribute('aria-checked') === 'true').catch(() => false)
+        if (!on) await run.click(`[data-testid="split-${group}-${method}"]`)
+      }
+      await run.click('[data-testid="split-accept"]')
+      await sleep(250)
+    },
+    async payGroup(run, group, method) {
+      await this.split(run, [[group, method]])
+    },
+    async payAmount(run, amount, method) {
+      if (method === 'balance') {
+        await run.click('[data-testid="quick-balance"]')
+        await sleep(250)
+        return
+      }
+      await run.click('[data-testid="sentence-amount"]')
+      await page.keyboard.type(String(amount))
+      await page.keyboard.press('Enter')
+      await run.snap()
+      await run.click(`[data-testid="quick-${method}"]`)
+      await sleep(250)
+    },
+    async bank(run) {
+      await run.click('[data-testid="quick-bank"]')
+      await run.click('[data-testid="copy-all"]')
+      await run.click('[data-testid="bank-confirm"]')
+      await sleep(250)
+    },
+    async confirmPending(run) {
+      await run.click('[data-testid^="confirm-draft"]')
+      await sleep(250)
+    },
+    async handover(run) {
+      await run.click('[data-testid="to-handover"]')
+    },
+  },
 }
 
 /** Сторно з хронології — спільне для всіх варіантів (§5). */
@@ -266,8 +453,11 @@ const SCENES = [
     n: 2,
     measure: true,
     async play(d, run) {
-      await d.payGroup(run, 'rent', 'cash')
-      await d.payGroup(run, 'deposit', 'terminal')
+      if (d.split) await d.split(run, [['rent', 'cash'], ['deposit', 'terminal']])
+      else {
+        await d.payGroup(run, 'rent', 'cash')
+        await d.payGroup(run, 'deposit', 'terminal')
+      }
     },
     async check(s) {
       const [a, b] = s.rent.payments
@@ -473,6 +663,11 @@ for (const variant of VARIANTS) {
       await sleep(300)
     } catch (e) {
       console.log('  зміна каси не пройшла:', e.message.split('\n')[0])
+    }
+    for (const [id, v] of run.metrics().pops) {
+      if (!r.pops[id]) r.pops[id] = { sigs: new Set(), hs: new Set() }
+      v.sigs.forEach((x) => r.pops[id].sigs.add(x))
+      v.hs.forEach((x) => r.pops[id].hs.add(x))
     }
     const s = await intake()
     r.cashboxChange = { clicks: run.clicks, extra: run.clicks - r.scenes.queue.clicks, ok: s.rent.payments[0]?.cashboxId === 'cb-kur-2' }
