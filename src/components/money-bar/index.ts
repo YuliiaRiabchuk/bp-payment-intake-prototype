@@ -7,4 +7,4 @@ export {
   type Account,
   type NamedAccount,
 } from './MoneyBar'
-export { MoneyBarStages, type MoneyBarStage } from './MoneyBarStages'
+export { MoneyStateBar, type MoneyState, type MoneyStateSegment } from './MoneyStateBar'

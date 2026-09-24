@@ -1,17 +1,199 @@
 /**
- * Типи мок-даних прототипу. Це НЕ модель бекенду: тут рівно те, що малює
- * картка оренди. Скоуп прототипу — один екран, тож сутності описані плоско,
- * без нормалізації і без полів, які ніде не читаються.
+ * Модель прийому коштів на оренду. Не модель бекенду: рівно те, що малюють
+ * крок «Оплата» і сайдбар. Правила — §5 брифу.
+ *
+ * Два облікові рахунки оренди: **оренда** (позиції + доп. нарахування,
+ * бо нарахування — доплати до рахунку оренди) і **застава**. Вони не
+ * сумуються ніколи. Нарахування — третя група на екрані зі своїм ПДВ.
  */
 
-export type RentStageKey =
-  | 'draft'
-  | 'payment'
-  | 'handover'
-  | 'active'
-  | 'closing'
+export type Party = 'fl' | 'ul'
 
-/** Точний підстан під макроетапом — те, що показує бейдж у хедері. */
+export type StageKey = 'draft' | 'payment' | 'handover' | 'active' | 'closing'
+
+export type MethodKind = 'cash' | 'terminal' | 'bank' | 'balance'
+
+/** Група розрахунку: що саме закриває платіж. */
+export type Group = 'rent' | 'deposit' | 'charges'
+
+export interface Cashbox {
+  id: string
+  /** «Каса Куренівка», «Термінал Куренівка», «Рахунок ФОП …». */
+  name: string
+  kind: 'cash' | 'terminal' | 'bank'
+  /** Одержувач: ФОП або юрособа компанії. Визначає ПДВ. */
+  org: string
+  orgKind: 'fop' | 'tov'
+  iban: string
+  /** Відділення. `null` — спільна безготівкова, без прив'язки. */
+  branch: string | null
+  /** Персональна готівкова каса менеджера. */
+  ownerId?: string
+  /** Розрахунковий рахунок юрособи компанії (безготівка юросіб). */
+  orgAccount?: boolean
+}
+
+export interface Position {
+  id: string
+  name: string
+  sku: string
+  kind: 'unit' | 'consumable' | 'kit'
+  qty: number
+  /** Розхідник продається поштучно — днів у нього немає. */
+  days: number | null
+  /** Ціна каталогу без ПДВ: за добу (одиниця, комплект) або за штуку. */
+  price: number
+  /** Застава за одиницю. */
+  deposit: number
+  /** Комплект — один рядок із вкладеним складом. */
+  parts?: { name: string; qty: number }[]
+}
+
+export interface Charge {
+  id: string
+  kind: 'charge' | 'discount'
+  /** Стаття: «Доставка», «Витрати на хімію», «Знижка постійному клієнту». */
+  article: string
+  /** «Уся оренда» або назва позиції. */
+  target: string
+  /** Сума без ПДВ, завжди додатна; знак дає `kind`. */
+  net: number
+  /** Стаття оподатковується. Ставку дає одержувач. */
+  vatable: boolean
+  comment?: string
+  createdAt: string
+  createdBy: string
+  cancelled?: { reason: string; by: string; at: string }
+}
+
+/**
+ * Що закрив платіж. Позиції нарахувань окремо: у кожного свій стан
+ * «оплачене / неоплачене».
+ */
+export interface Cover {
+  rent: number
+  deposit: number
+  charges: Record<string, number>
+}
+
+/** Рахунок на оплату — документ для безготівки. */
+export interface PaymentInvoice {
+  id: string
+  /** `null` — номер ще не прийшов з 1С, друк недоступний. */
+  number: string | null
+  auto1c: boolean
+  createdAt: string
+  createdBy: string
+  /** Що в рахунку. Фізособа: усе; юрособа: оренда з ПДВ / застава без ПДВ. */
+  group: 'all' | 'rent' | 'deposit' | 'charges'
+  amount: number
+  vatRate: number
+  lines: { name: string; amount: number }[]
+  cancelled?: { by: string; at: string }
+}
+
+export interface Payment {
+  id: string
+  method: MethodKind
+  cashboxId: string | null
+  /** Сума, яку підтвердив менеджер. */
+  amount: number
+  cover: Cover
+  at: string
+  by: string
+  /** ПКО. Для балансу і розрахункового рахунку юрособи — немає. */
+  doc: { number: string | null; auto1c: boolean } | null
+  invoiceId?: string
+  source: 'crm' | '1c'
+  /** Проведення бухгалтером у 1С з фактичною сумою (наступного дня). */
+  booked1c?: { amount: number; at: string }
+  /** Сторно: ПКО «Анульований», запис лишається. */
+  annulled?: { by: string; at: string }
+}
+
+/**
+ * Чернетка способу оплати. Живе на оренді (стан зберігається, §5):
+ * повернувшись, менеджер бачить свій спосіб, касу і рахунок.
+ */
+export interface Draft {
+  id: string
+  method: MethodKind | null
+  cashboxId: string | null
+  /** 0 — поле порожнє. */
+  amount: number
+  /** Куди йдуть гроші. `auto` — водоспад оренда → нарахування → застава. */
+  target: 'auto' | 'rent' | 'deposit' | 'charges'
+  /**
+   * Явний склад: вибрані позиції. `undefined` — автоматично.
+   * Ключі: 'rent', 'deposit', id нарахування.
+   */
+  items?: string[]
+  invoiceId?: string
+}
+
+export type EventKind =
+  | 'payment'
+  | 'annul'
+  | 'invoice'
+  | 'invoice-cancel'
+  | 'charge'
+  | 'charge-cancel'
+  | 'number'
+  | 'booked'
+  | 'allow-handover'
+  | 'handover'
+
+/** Запис хронології. Скасування — теж запис, нічого не видаляється. */
+export interface RentEvent {
+  id: string
+  at: string
+  who: string
+  kind: EventKind
+  text: string
+  paymentId?: string
+  source?: 'crm' | '1c'
+}
+
+export interface Counterparty {
+  name: string
+  phone: string
+  edrpou?: string
+  /** Реквізити для видачі заповнені. Ні — далі оплати не пускає. */
+  requisitesOk: boolean
+  /** Операційний баланс («гаманець»). Мінус — борг. */
+  wallet: number
+  /** З яких оренд склався гаманець. */
+  walletParts: { code: string; amount: number; note: string }[]
+  /** Заставний баланс: заморожений до повернення. */
+  depositBalance: number
+  depositParts: { code: string; amount: number }[]
+  activeRents: number
+}
+
+export interface Rent {
+  id: string
+  code: string
+  party: Party
+  counterparty: Counterparty
+  manager: { id: string; name: string; initials: string }
+  branch: string
+  warehouse: string
+  issueAt: string
+  returnAt: string
+  positions: Position[]
+  /** Застава не за позиціями: друга оренда клієнта, заставу не беруть. */
+  depositOverride?: number
+  charges: Charge[]
+  payments: Payment[]
+  invoices: PaymentInvoice[]
+  drafts: Draft[]
+  events: RentEvent[]
+  handoverAllowed?: { by: string; at: string }
+  handedOver?: boolean
+}
+
+/** Аліаси для степера, перенесеного з bp-1259. */
+export type RentStageKey = StageKey
 export type RentStatus =
   | 'DRAFT'
   | 'PENDING_PAYMENT'
@@ -21,159 +203,3 @@ export type RentStatus =
   | 'OVERDUE'
   | 'AWAITING_CLOSURE'
   | 'CLOSED'
-
-export type CounterpartyKind = 'FL' | 'UL'
-
-export interface Counterparty {
-  id: string
-  kind: CounterpartyKind
-  name: string
-  /** ФО — телефон; ЮО — контактна особа з телефоном. */
-  phone: string
-  /** ЮО — код ЄДРПОУ (заглушка). */
-  edrpou?: string
-  /** Операційний баланс контрагента, ₴. Може піти в мінус — це борг. */
-  operationalBalance: number
-  /** Заставний баланс — заморожений до повернення, ₴. */
-  depositBalance: number
-}
-
-export interface RentPosition {
-  id: string
-  name: string
-  qty: number
-  pricePerDay: number
-  accepted: boolean
-  acceptedAt?: string
-}
-
-/** Рядок рахунку — база, знижка, доп. нарахування. */
-export interface InvoiceLine {
-  id: string
-  label: string
-  amount: number
-  kind: 'base' | 'discount' | 'surcharge'
-}
-
-export interface Invoice {
-  kind: 'rent' | 'deposit'
-  total: number
-  paid: number
-  lines: InvoiceLine[]
-  /** ЮО: оренда з ПДВ, застава без ПДВ. ФО — без позначки. */
-  vat?: 'with' | 'without'
-}
-
-export type PaymentMethodKind = 'cash' | 'bank' | 'terminal' | 'balance'
-
-export type PaymentStatus = 'draft' | 'awaiting' | 'confirmed'
-
-export interface Payment {
-  id: string
-  method: PaymentMethodKind
-  /** Каса довідника: готівкова персональна, безготівкова спільна. */
-  cashbox: string
-  status: PaymentStatus
-  amount: number
-  /** Документ приймання: ПКО для готівки, платіжка для безналу. */
-  document?: string
-  purpose?: string
-  at?: string
-  /** Платіж закриває доп. нарахування, а не початковий розрахунок. */
-  forSurchargeId?: string
-  /**
-   * Розбивка одного документа по двох рахунках.
-   *
-   * Готівку часто приймають одним ПКО «оренда + застава». Документ один,
-   * грошей двоє: оренда і застава не сумуються, тож у книзі рухів такий ПКО
-   * дає два рядки з одним номером. Без розбивки застава осідала б на
-   * рахунку оренди і підсумки в сайдбарі переставали сходитись.
-   */
-  allocation?: { rent: number; deposit: number }
-}
-
-export interface RentDocument {
-  id: string
-  name: string
-  number?: string
-  date?: string
-  /** Документ ще не згенеровано — рядок-заготовка. */
-  pending?: boolean
-  signed?: boolean
-}
-
-/**
- * Що саме породило рядок наскрізної секції.
- *
- *  - `manual` — менеджер завів нарахування руками. Стаття витрат обовʼязкова.
- *  - `extension` — доплата за продовження строку. Статті немає: це не витрата,
- *    а різниця по тарифу.
- *  - `overdue` — прострочення. Рахується саме, утримується із застави, і форма
- *    нарахування для нього не зʼявляється взагалі (BRIEF §6).
- */
-export type SurchargeKind = 'manual' | 'extension' | 'overdue'
-
-/**
- * Життя рядка. `withheld` — тільки для прострочення: гроші не приймаються,
- * різниця утримується із застави при поверненні.
- */
-export type SurchargeStatus =
-  | 'open'
-  | 'invoiced'
-  | 'settled'
-  | 'withheld'
-  | 'cancelled'
-
-/** Хто зробив дію. Клієнт бачиться окремо: він діяв віддалено, не колега. */
-export type ActorKind = 'manager' | 'client' | 'system'
-
-/** Запис наскрізного блока «Доп. нарахування». */
-export interface Surcharge {
-  id: string
-  kind: SurchargeKind
-  /** ID позиції або `null` = «Уся оренда». */
-  positionId: string | null
-  amount: number
-  /** Стаття витрат з 1С. `null` у системних рядків — там її не вибирають. */
-  articleId: string | null
-  comment?: string
-  /**
-   * Ставка ПДВ РЯДКА, а не документа. Всередині однієї оренди частина
-   * позицій іде без ПДВ (санкції), частина з ПДВ — модель повторює 1С.
-   */
-  vat?: 0 | 20
-  createdAt: string
-  source: ActorKind
-  status: SurchargeStatus
-  /** Документ, яким рядок закрито: ПКО у ФО, окремий рахунок у ЮО. */
-  document?: string
-  settledAt?: string
-  /** Довидача розхідника — розвилка §7.7, прототип її не вирішує. */
-  disputed?: boolean
-}
-
-export interface Rent {
-  id: string
-  displayCode: string
-  externalId1c: string
-  status: RentStatus
-  stage: RentStageKey
-  /** Найдальший фактично досягнутий етап — фронтир степера. */
-  maxStage: RentStageKey
-  counterparty: Counterparty
-  manager: { initials: string; name: string }
-  branch: string
-  issueAt: string
-  plannedReturnAt: string
-  /** Доба, на якій оренда зараз. Більша за план = прострочення. */
-  currentDay: number
-  plannedDays: number
-  positions: RentPosition[]
-  rentInvoice: Invoice
-  depositInvoice: Invoice
-  payments: Payment[]
-  documents: RentDocument[]
-  surcharges: Surcharge[]
-  /** Каса менеджера — персональна готівкова, у неї падають ПКО доплат. */
-  cashbox: string
-}

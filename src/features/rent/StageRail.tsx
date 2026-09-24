@@ -5,7 +5,14 @@ import {
   useContext,
   type ReactNode,
 } from 'react'
-import { type LucideIcon } from 'lucide-react'
+import {
+  Check,
+  Clock3,
+  CircleDashed,
+  CircleAlert,
+  Pencil,
+  type LucideIcon,
+} from 'lucide-react'
 import {
   Tooltip,
   TooltipContent,
@@ -22,9 +29,22 @@ import { cn } from '@/lib/utils'
  *  - `current` — здесь работают прямо сейчас (ink, как активная кнопка);
  *  - `idle` — до этапа ещё не дошли; пунктирная обводка, как у пустых зон.
  */
-export type StageTone = 'current' | 'done' | 'idle'
+export type StageTone =
+  | 'current'
+  | 'done'
+  | 'idle'
+  | 'ready'
+  | 'editing'
+  | 'waiting'
+  | 'partial'
+  | 'attention'
 
 const TONE: Record<StageTone, string> = {
+  ready: 'border-border-strong bg-card text-fg',
+  editing: 'border-fg bg-fg text-primary-fg',
+  waiting: 'border-border-strong bg-muted text-muted-fg',
+  partial: 'border-notice-fg bg-notice-soft text-notice-fg',
+  attention: 'border-danger-fg bg-danger-soft text-danger-fg',
   current: 'border-fg bg-fg text-primary-fg',
   done: 'border-success bg-success text-white',
   idle: 'border-dashed border-border-strong bg-card text-subtle',
@@ -99,7 +119,8 @@ export function StageRail({
           value={{
             first: index === 0,
             last: index === lastIndex,
-            prevTone: index === 0 ? null : (steps[index - 1]?.props.tone ?? null),
+            prevTone:
+              index === 0 ? null : (steps[index - 1]?.props.tone ?? null),
           }}
         >
           {step}
@@ -111,7 +132,12 @@ export function StageRail({
 
 interface StageRailStepProps {
   tone: StageTone
+  heading?: boolean
+  headingStatus?: ReactNode
+  aside?: ReactNode
+  status?: ReactNode
   icon: LucideIcon
+  testId?: string
   /**
    * Подпись узла в тултипе. Дублирует заголовок секции справа намеренно: узел
    * — единственное, что остаётся видимым, когда взгляд идёт по рельсу, а не по
@@ -138,16 +164,48 @@ interface StageRailStepProps {
  * ровно до её низа, а входящий отрезок следующей строки продолжает его от
  * самого верха. Шва нет ни на стыке строк, ни под узлом любого размера.
  */
-function StageRailStep({ tone, icon: Icon, label, children }: StageRailStepProps) {
+function StageRailStep({
+  tone,
+  icon: DefaultIcon,
+  heading,
+  headingStatus,
+  aside,
+  status,
+  label,
+  children,
+  testId,
+}: StageRailStepProps) {
   const { last } = useContext(StepPlaceContext)
-  const current = tone === 'current'
+  const current = tone === 'current' || tone === 'editing'
+  const Icon =
+    tone === 'done'
+      ? Check
+      : tone === 'waiting'
+        ? Clock3
+        : tone === 'partial'
+          ? CircleDashed
+          : tone === 'attention'
+            ? CircleAlert
+            : tone === 'editing'
+              ? Pencil
+              : DefaultIcon
 
   return (
     // Колонка узлов ровно по ширине активного узла (32 px), а зазор до секции
     // узкий: рельс должен читаться прижатым к секциям, которые он отжимает, а
     // не отдельной полосой на полях — иначе секции выглядят вдавленными слева
     // при флаше справа.
-    <div className="grid grid-cols-[2rem_minmax(0,1fr)] gap-x-2">
+    //
+    // Ширина — из `--stage-spine-width` (BP-1074), а не из литерала: та же
+    // величина задаёт ось, на которую садит свои кружки горизонтальный спайн
+    // этапов сверху. Разъехаться они больше не могут — значение одно.
+    <div
+      className="grid scroll-mt-4 grid-cols-[var(--stage-spine-width)_minmax(0,1fr)] gap-x-2"
+      data-stage-step=""
+      data-testid={testId}
+      data-progress-state={tone}
+      aria-current={current ? 'step' : undefined}
+    >
       <div className="flex flex-col items-center">
         {/* <span
           className={cn(
@@ -170,20 +228,23 @@ function StageRailStep({ tone, icon: Icon, label, children }: StageRailStepProps
                    размер (32 → 24), и заливку, и это читается как скачок
                    картинки. С переходом видно САМО СОБЫТИЕ — этап закрылся. */
                 'transition-[width,height,background-color,border-color,color] duration-200 ease-out motion-reduce:transition-none',
-                current ? 'size-8' : 'size-6',
-                TONE[tone],
+                heading ? 'size-9' : 'size-8',
+                heading && ['ready', 'partial', 'waiting'].includes(tone) ? 'border-accent bg-accent-soft text-accent-fg' : TONE[tone],
               )}
             >
               <Icon
                 className={cn(
                   'transition-[width,height] duration-200 ease-out motion-reduce:transition-none',
-                  current ? 'size-4' : 'size-3',
+                  'size-4',
                 )}
                 aria-hidden
               />
             </span>
           </TooltipTrigger>
-          <TooltipContent side="right">{label}</TooltipContent>
+          <TooltipContent side="right">
+            {label}
+            {status ? <> · {status}</> : null}
+          </TooltipContent>
         </Tooltip>
         {!last && (
           <span
@@ -213,7 +274,22 @@ function StageRailStep({ tone, icon: Icon, label, children }: StageRailStepProps
             24 — стояла прижатой к верху и висела на 4 px ВЫШЕ его центра:
             единственный шаг рельса, где узел и его собственный текст смотрели
             в разные стороны (замерено: смещение −4 px при +2,4…+6 у соседей). */}
-        <div className="flex min-h-6 flex-col justify-center">{children}</div>
+        <div className="flex min-h-8 flex-col justify-center">
+          {heading && <header className="mb-3 flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex min-h-9 flex-wrap items-center gap-2">
+                <h2 className="text-title font-semibold text-fg">{label}</h2>
+                {headingStatus && <span className={cn('rounded-md px-2 py-0.5 text-label', tone === 'done' ? 'bg-success-soft text-success-fg' : ['ready', 'partial', 'waiting'].includes(tone) ? 'bg-accent-soft text-accent-fg' : 'bg-muted text-fg')}>{headingStatus}</span>}
+              </div>
+              {status && <p className="mt-1 text-label text-muted-fg">{status}</p>}
+            </div>
+            {aside && <div className="flex min-h-9 items-center">{aside}</div>}
+          </header>}
+          {!heading && status && (
+            <p className="mb-1.5 text-label text-muted-fg">{status}</p>
+          )}
+          {children}
+        </div>
       </div>
     </div>
   )

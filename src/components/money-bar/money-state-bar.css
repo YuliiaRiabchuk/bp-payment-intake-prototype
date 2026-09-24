@@ -1,0 +1,42 @@
+.money-state-bar { height: 24px; }
+.money-state-bar[data-size='mini'] { height: 18px; }
+.money-state-segment:first-child { border-radius: 3px 0 0 3px; }
+.money-state-segment:last-child { border-radius: 0 3px 3px 0; }
+.money-state-segment:only-child { border-radius: 3px; }
+.money-state-value {
+  font-size: 12px;
+  white-space: nowrap;
+  /* Small segments keep their true proportion; their amount remains available
+     on hover/focus rather than overflowing or inflating the money geometry. */
+  overflow: hidden;
+}
+.money-state-bar[data-size='mini'] .money-state-value { font-size: 11.5px; }
+.money-state-segment[data-boundary]::after {
+  content: '';
+  position: absolute;
+  inset: -2px auto -2px -1px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--color-fg);
+  pointer-events: none;
+}
+.money-unpaid-pattern {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: .09;
+  background: repeating-linear-gradient(135deg, currentColor 0 1px, transparent 1px 6px);
+  transition: opacity 180ms ease-out;
+}
+.money-state-segment[data-state='missing']:is(:hover, :focus-visible) .money-unpaid-pattern {
+  opacity: .22;
+  animation: money-unpaid-travel 1.2s linear 2;
+}
+@keyframes money-unpaid-travel {
+  to { background-position: 17px 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .money-unpaid-pattern { transition: none; }
+  .money-state-segment[data-state='missing']:is(:hover, :focus-visible) .money-unpaid-pattern { animation: none; }
+}

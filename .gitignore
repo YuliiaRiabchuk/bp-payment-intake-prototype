@@ -11,3 +11,5 @@ audit*.err
 reference/*.png
 # Нотатки з приватного коду CRM (для порту варіанта 0) — теж тільки локально.
 reference/*.md
+# Робочі файли live-сервера impeccable.
+.impeccable/live/

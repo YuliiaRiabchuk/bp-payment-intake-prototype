@@ -1,0 +1,236 @@
+{
+  "rail": "0",
+  "summary": {
+    "0": {
+      "clicks1": 5,
+      "clicks2": 10,
+      "clicks5": 5,
+      "cashboxExtra": 2,
+      "mainShift": 161,
+      "stepShift": 27,
+      "surfaces": 8,
+      "popStates": "7 (method-setup)",
+      "popAll": [
+        {
+          "id": "method-setup",
+          "states": 7,
+          "heights": 5
+        },
+        {
+          "id": "amount",
+          "states": 4,
+          "heights": 4
+        }
+      ],
+      "passed": "12/12",
+      "layout": {
+        "hscroll": 0,
+        "mainVisible": true,
+        "mainBottom": 707
+      }
+    }
+  },
+  "scenes": {
+    "0": {
+      "queue": {
+        "n": 1,
+        "passed": true,
+        "error": null,
+        "clicks": 5,
+        "mainShift": 160,
+        "stepShift": 0,
+        "surfaces": 6,
+        "worst": [
+          "step-heading",
+          "bar-rent",
+          "bar-deposit",
+          "amount-placeholder",
+          "rail-settlement",
+          "rail-deposit"
+        ]
+      },
+      "split": {
+        "n": 2,
+        "passed": true,
+        "error": null,
+        "clicks": 10,
+        "mainShift": 161,
+        "stepShift": 0,
+        "surfaces": 7,
+        "worst": [
+          "step-heading",
+          "bar-rent",
+          "bar-deposit",
+          "shortfall",
+          "rail-settlement",
+          "rail-deposit",
+          "amount-after"
+        ]
+      },
+      "transfer-fl": {
+        "n": 3,
+        "passed": true,
+        "error": null,
+        "clicks": 7,
+        "mainShift": 309,
+        "stepShift": 0,
+        "surfaces": 6,
+        "worst": [
+          "step-heading",
+          "bar-rent",
+          "bar-deposit",
+          "amount-placeholder",
+          "rail-settlement",
+          "rail-deposit"
+        ]
+      },
+      "legal": {
+        "n": 4,
+        "passed": true,
+        "error": null,
+        "clicks": 1,
+        "mainShift": 0,
+        "stepShift": 0,
+        "surfaces": 7,
+        "worst": [
+          "step-heading",
+          "bar-rent",
+          "bar-deposit",
+          "shortfall",
+          "plaque",
+          "rail-settlement",
+          "rail-deposit"
+        ]
+      },
+      "charge-after": {
+        "n": 5,
+        "passed": true,
+        "error": null,
+        "clicks": 5,
+        "mainShift": 160,
+        "stepShift": 27,
+        "surfaces": 7,
+        "worst": [
+          "charges-total",
+          "charge-line",
+          "step-heading",
+          "bar-rent",
+          "amount-placeholder",
+          "plaque",
+          "rail-settlement"
+        ]
+      },
+      "partial": {
+        "n": 6,
+        "passed": true,
+        "error": null,
+        "clicks": 6,
+        "mainShift": 160,
+        "stepShift": 0,
+        "surfaces": 6,
+        "worst": [
+          "step-heading",
+          "bar-rent",
+          "bar-deposit",
+          "amount-placeholder",
+          "rail-settlement",
+          "rail-deposit"
+        ]
+      },
+      "balance": {
+        "n": 7,
+        "passed": true,
+        "error": null,
+        "clicks": 10,
+        "mainShift": 161,
+        "stepShift": 0,
+        "surfaces": 7,
+        "worst": [
+          "step-heading",
+          "bar-rent",
+          "bar-deposit",
+          "amount-placeholder",
+          "plaque",
+          "rail-settlement",
+          "rail-deposit"
+        ]
+      },
+      "reversal": {
+        "n": 8,
+        "passed": true,
+        "error": null,
+        "clicks": 8,
+        "mainShift": 160,
+        "stepShift": 0,
+        "surfaces": 6,
+        "worst": [
+          "step-heading",
+          "bar-rent",
+          "bar-deposit",
+          "amount-placeholder",
+          "rail-settlement",
+          "rail-deposit"
+        ]
+      },
+      "zero-deposit": {
+        "n": 9,
+        "passed": true,
+        "error": null,
+        "clicks": 7,
+        "mainShift": 160,
+        "stepShift": 0,
+        "surfaces": 4,
+        "worst": [
+          "step-heading",
+          "bar-rent",
+          "amount-placeholder",
+          "rail-settlement"
+        ]
+      },
+      "from-1c": {
+        "n": 10,
+        "passed": true,
+        "error": null,
+        "clicks": 0,
+        "mainShift": 0,
+        "stepShift": 0,
+        "surfaces": 1,
+        "worst": [
+          "step-heading"
+        ]
+      },
+      "discount": {
+        "n": 11,
+        "passed": true,
+        "error": null,
+        "clicks": 0,
+        "mainShift": 0,
+        "stepShift": 0,
+        "surfaces": 2,
+        "worst": [
+          "charges-total",
+          "step-heading"
+        ]
+      },
+      "big": {
+        "n": 12,
+        "passed": true,
+        "error": null,
+        "clicks": 5,
+        "mainShift": 160,
+        "stepShift": 77,
+        "surfaces": 8,
+        "worst": [
+          "charges-total",
+          "charge-line",
+          "step-heading",
+          "bar-rent",
+          "bar-deposit",
+          "amount-placeholder",
+          "rail-settlement",
+          "rail-deposit"
+        ]
+      }
+    }
+  }
+}

@@ -1306,3 +1306,8 @@ table:has(> colgroup[data-fixed]) {
     transition: none;
   }
 }
+
+/* Колонка вузлів рейки кроку (порт `--stage-spine-width` з CRM). */
+:root {
+  --stage-spine-width: 2rem;
+}

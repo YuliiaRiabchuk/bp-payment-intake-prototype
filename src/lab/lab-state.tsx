@@ -9,10 +9,8 @@ import {
 } from 'react'
 import { SCENES, SCENE_BY_ID } from './scenes'
 import { RAIL_VARIANTS, STEP_VARIANTS, type Role } from './variants'
-import { useRentStore } from '@/state/rent-store'
-import type { RentId } from '@/mock/rents'
 import { RENT_STAGES } from '@/features/rent/stages'
-import type { RentStageKey } from '@/mock/types'
+import type { Party, StageKey } from '@/mock/types'
 
 /**
  * Стан перегляду: варіант кроку, варіант сайдбару, сцена, контрагент, роль.
@@ -23,17 +21,24 @@ import type { RentStageKey } from '@/mock/types'
  */
 interface ViewState {
   sceneId: string
-  rentId: RentId
-  stage: RentStageKey
+  party: Party
+  stage: StageKey
   step: string
   rail: string
   role: Role
 }
 
 interface LabState extends ViewState {
+  /**
+   * Ключ стану даних. Сцена, контрагент і варіант кроку перезбирають оренду
+   * з нуля: варіанти порівнюються з однієї точки. Сайдбар — тільки показ,
+   * його перемикання дані не скидає.
+   */
+  resetKey: string
+  resetScene: () => void
   setScene: (sceneId: string) => void
-  setRent: (rentId: RentId) => void
-  setStage: (stage: RentStageKey) => void
+  setParty: (party: Party) => void
+  setStage: (stage: StageKey) => void
   setStep: (code: string) => void
   setRail: (code: string) => void
   setRole: (role: Role) => void
@@ -55,10 +60,10 @@ function readUrl(): Partial<ViewState> & { hidden?: boolean } {
   const out: Partial<ViewState> & { hidden?: boolean } = {}
   const scene = q.get('scene')
   if (scene && SCENE_BY_ID.has(scene)) out.sceneId = scene
-  const rent = q.get('party')
-  if (rent === 'fl' || rent === 'ul') out.rentId = rent
+  const party = q.get('party')
+  if (party === 'fl' || party === 'ul') out.party = party
   const stage = q.get('stage')
-  if (stage && RENT_STAGES.some((s) => s.key === stage)) out.stage = stage as RentStageKey
+  if (stage && RENT_STAGES.some((s) => s.key === stage)) out.stage = stage as StageKey
   const step = q.get('v')
   if (isStep(step)) out.step = step
   const rail = q.get('rail')
@@ -91,21 +96,14 @@ export function LabProvider({ children }: { children: ReactNode }) {
   const sceneFromUrl = url.sceneId != null
   const [view, setView] = useState<ViewState>({
     sceneId: seedScene.id,
-    rentId: url.rentId ?? (sceneFromUrl ? seedScene.rent : stored.rentId) ?? seedScene.rent,
+    party: url.party ?? (sceneFromUrl ? seedScene.party : stored.party) ?? seedScene.party,
     stage: url.stage ?? (sceneFromUrl ? seedScene.stage : stored.stage) ?? seedScene.stage,
     step: url.step ?? (isStep(stored.step ?? null) ? stored.step! : '0'),
     rail: url.rail ?? (isRail(stored.rail ?? null) ? stored.rail! : '0'),
     role: url.role ?? stored.role ?? 'manager',
   })
   const [hidden, setHidden] = useState(Boolean(url.hidden))
-
-  const { dispatch } = useRentStore()
-
-  useEffect(() => {
-    const s = SCENE_BY_ID.get(view.sceneId)
-    if (!s) return
-    dispatch({ type: 'APPLY_SCENE', actions: s.setup(view.rentId) })
-  }, [view.sceneId, view.rentId, dispatch])
+  const [nonce, setNonce] = useState(0)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -113,7 +111,7 @@ export function LabProvider({ children }: { children: ReactNode }) {
     q.set('v', view.step)
     q.set('rail', view.rail)
     q.set('scene', view.sceneId)
-    q.set('party', view.rentId)
+    q.set('party', view.party)
     q.set('stage', view.stage)
     q.set('role', view.role)
     if (hidden) q.set('lab', 'off')
@@ -141,18 +139,20 @@ export function LabProvider({ children }: { children: ReactNode }) {
   const setScene = useCallback((sceneId: string) => {
     const s = SCENE_BY_ID.get(sceneId)
     if (!s) return
-    setView((v) => ({ ...v, sceneId, rentId: s.rent, stage: s.stage }))
+    setView((v) => ({ ...v, sceneId, party: s.party, stage: s.stage }))
   }, [])
 
-  const setStage = useCallback((stage: RentStageKey) => {
+  const setStage = useCallback((stage: StageKey) => {
     setView((v) => ({ ...v, stage }))
   }, [])
 
   const value = useMemo<LabState>(
     () => ({
       ...view,
+      resetKey: `${view.sceneId}|${view.party}|${view.step}|${nonce}`,
+      resetScene: () => setNonce((n) => n + 1),
       setScene,
-      setRent: (rentId) => setView((v) => ({ ...v, rentId })),
+      setParty: (party) => setView((v) => ({ ...v, party })),
       setStage,
       setStep: (step) => setView((v) => ({ ...v, step })),
       setRail: (rail) => setView((v) => ({ ...v, rail })),
@@ -160,7 +160,7 @@ export function LabProvider({ children }: { children: ReactNode }) {
       hidden,
       setHidden,
     }),
-    [view, setScene, setStage, hidden],
+    [view, nonce, setScene, setStage, hidden],
   )
 
   return <LabContext.Provider value={value}>{children}</LabContext.Provider>

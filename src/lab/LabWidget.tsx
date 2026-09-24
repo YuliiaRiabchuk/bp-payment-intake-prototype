@@ -81,7 +81,7 @@ export function LabWidget() {
 
   const describe = `варіант ${lab.step} + сайдбар ${lab.rail} — сцена ${
     SCENES.find((s) => s.id === lab.sceneId)?.n ?? '?'
-  } — ${lab.rentId === 'ul' ? 'юрособа' : 'фізособа'} — ${ROLE_LABEL[lab.role].toLowerCase()}`
+  } — ${lab.party === 'ul' ? 'юрособа' : 'фізособа'} — ${ROLE_LABEL[lab.role].toLowerCase()}`
 
   const copy = async () => {
     try {
@@ -214,10 +214,10 @@ export function LabWidget() {
         {/* ── Контрагент, роль, етап ────────────────────────────────── */}
         <section className="px-3 py-2.5">
           <div className="flex flex-wrap items-center gap-1">
-            <Chip active={lab.rentId === 'fl'} onClick={() => lab.setRent('fl')}>
+            <Chip active={lab.party === 'fl'} onClick={() => lab.setParty('fl')}>
               Фізособа
             </Chip>
-            <Chip active={lab.rentId === 'ul'} onClick={() => lab.setRent('ul')}>
+            <Chip active={lab.party === 'ul'} onClick={() => lab.setParty('ul')}>
               Юрособа
             </Chip>
             <span className="mx-1 h-4 w-px bg-border" aria-hidden />
