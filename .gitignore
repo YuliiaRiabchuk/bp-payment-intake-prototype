@@ -1,0 +1,11 @@
+node_modules
+dist
+.DS_Store
+*.local
+.vite
+*.tsbuildinfo
+shots/*.tmp
+audit*.json
+audit*.err
+# Кадри чинного екрана містять телефон та ім'я клієнта: у публічну репу не йдуть.
+reference/*.png
